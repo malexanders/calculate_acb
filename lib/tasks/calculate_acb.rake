@@ -4,6 +4,7 @@ namespace :acb do
   desc "Reformat kraken ledgers export for acb calculation"
   task :reformat_kraken_ledger, [:file_path] => :environment do |t, args|
     trades = []
+    FIAT_CURRENY_CODES = ["CAD, USD"]
     CSV.foreach(args[:file_path], headers: true) do |row|
       row = HashWithIndifferentAccess.new(row)
 
@@ -30,7 +31,10 @@ namespace :acb do
       bought_asset = bought_asset_hash[:asset].slice!(1..-1)
       sold_asset = sold_asset_hash[:asset].slice!(1..-1)
 
-      if sold_asset != "CAD"
+      if FIAT_CURRENY_CODES.include?(sold_asset)
+        p "At #{Time.parse(sold_asset_hash[:time])}:"
+        p "Bought #{bought_asset_hash[:amount]} #{bought_asset} with #{sold_asset_hash[:amount]} #{sold_asset}"
+      else
         unix_time_stamp = Time.parse(sold_asset_hash[:time]).utc.to_i
 
         response = HTTParty.get("https://min-api.cryptocompare.com/data/pricehistorical?fsym=#{sold_asset}&tsyms=BTC,CAD,USD&ts=#{unix_time_stamp}")
@@ -39,10 +43,10 @@ namespace :acb do
 
         p "At #{Time.parse(sold_asset_hash[:time])}:"
         p "Bought #{bought_asset_hash[:amount]} #{bought_asset} with #{sold_asset_hash[:amount]} #{sold_asset} (#{value_per_unit_in_cad}CAD/#{sold_asset})"
-      else
-        p "At #{Time.parse(sold_asset_hash[:time])}:"
-        p "Bought #{bought_asset_hash[:amount]} #{bought_asset} with #{sold_asset_hash[:amount]} #{sold_asset}"
       end
+
+      # Organize all buy orders and sell orders for a certain asset
+
     end
   end
 end
